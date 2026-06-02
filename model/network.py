@@ -79,13 +79,18 @@ class NeuralNetwork:
                 print(f"Epoch {epoch}: loss={loss:.4f}, accuracy={accuracy:.4f}")
 
     def save(self, path):
-        np.savez(path,
-                 weights=np.array(self.weights, dtype=object),
-                 biases=np.array(self.biases, dtype=object),
-                 layer_sizes=np.array(self.layer_sizes))
+        save_dict = {}
+        for i, w in enumerate(self.weights):
+            save_dict[f'weight_{i}'] = w
+        for i, b in enumerate(self.biases):
+            save_dict[f'bias_{i}'] = b
+        save_dict['layer_sizes'] = np.array(self.layer_sizes)
+        save_dict['num_layers'] = np.array(len(self.weights))
+        np.savez(path, **save_dict)
 
     def load(self, path):
         data = np.load(path, allow_pickle=True)
-        self.weights = list(data['weights'])
-        self.biases = list(data['biases'])
+        num_layers = int(data['num_layers'])
+        self.weights = [data[f'weight_{i}'] for i in range(num_layers)]
+        self.biases = [data[f'bias_{i}'] for i in range(num_layers)]
         self.layer_sizes = list(data['layer_sizes'])
