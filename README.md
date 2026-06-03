@@ -1,10 +1,12 @@
-# Neural Network from Scratch
+# Glyph
 
-I built a neural network without using PyTorch, TensorFlow, or any ML library using just NumPy and math. Trained it on MNIST handwritten digits and wrapped it in a small web demo where you can draw a digit and watch it predict in real time.
+A digit recognizer that reads what you draw using a neural network trained from scratch.
+
+I built this without using PyTorch, TensorFlow, or any ML library. Just NumPy and math. Trained it on MNIST handwritten digits and wrapped it in a small web demo where you can draw a digit and watch it predict in real time.
 
 ## Why
 
-I wanted to actually understand what's happening inside a neural network. Building it from scratch forced me to understand forward passes, backpropagation, and gradient descent properly.
+I wanted to actually understand what's happening inside a neural network, not just call `.fit()` and move on. Building it from scratch forced me to understand forward passes, backpropagation, and gradient descent properly.
 
 ## How it works
 
@@ -35,7 +37,7 @@ Install dependencies:
 pip install numpy flask flask-cors pillow
 ```
 
-Train the model:
+Train the model (takes a few minutes):
 ```bash
 python model/train.py
 ```
@@ -49,6 +51,6 @@ Open `demo/index.html` in your browser, draw a digit, hit Predict.
 
 ## Notes
 
-It works well on digits that look like MNIST (small, centered, thin strokes). If you draw thick or off-center it struggles; that's a real ML problem called distribution shift. The training data doesn't match the real-world input style perfectly. To fix it properly you'd augment the training data with different stroke widths, rotations, and positions.
+It works well on digits that look like MNIST (small, centered, thin strokes). If you draw thick or off-center it struggles — that's a real ML problem called distribution shift. The training data doesn't match the real-world input style perfectly. To fix it properly you'd augment the training data with different stroke widths, rotations, and positions.
 
 The demo also shows the network's internal activations layer by layer as it processes your drawing, which I thought was a cool way to see what's actually happening under the hood.
