@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Digit Recognizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0f0f0f;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            letter-spacing: 0.2em;
+            color: #aaaaaa;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        p.subtitle {
+            font-size: 0.75rem;
+            color: #555;
+            margin-bottom: 40px;
+            letter-spacing: 0.1em;
+        }
+
+        .main {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        canvas {
+            border: 1px solid #333;
+            cursor: crosshair;
+            background: #000;
+            border-radius: 4px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            padding: 10px 24px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-radius: 4px;
+            letter-spacing: 0.1em;
+            transition: background 0.15s;
+        }
+
+        button:hover {
+            background: #2a2a2a;
+        }
+
+        button.primary {
+            border-color: #4a9eff;
+            color: #4a9eff;
+        }
+
+        button.primary:hover {
+            background: #0d2a4a;
+        }
+
+        .right {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 280px;
+        }
+
+        .prediction-box {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .prediction-label {
+            font-size: 0.7rem;
+            color: #555;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .prediction-number {
+            font-size: 5rem;
+            font-weight: bold;
+            color: #4a9eff;
+            line-height: 1;
+        }
+
+        .confidence-section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            color: #555;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .bar-label {
+            font-size: 0.8rem;
+            color: #888;
+            width: 16px;
+            text-align: right;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 6px;
+            background: #2a2a2a;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: #4a9eff;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .bar-fill.top {
+            background: #4aff9e;
+        }
+
+        .bar-pct {
+            font-size: 0.75rem;
+            color: #555;
+            width: 40px;
+            text-align: right;
+        }
+
+        .network-section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        #network-canvas {
+            width: 100%;
+            height: 160px;
+            border: none;
+            background: transparent;
+        }
+
+        .status {
+            font-size: 0.7rem;
+            color: #555;
+            text-align: center;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Digit Recognizer</h1>
+    <p class="subtitle">Neural network built from scratch &mdash; no frameworks</p>
+
+    <div class="main">
+        <div class="left">
+            <canvas id="draw-canvas" width="280" height="280"></canvas>
+            <div class="buttons">
+                <button onclick="clearCanvas()">Clear</button>
+                <button class="primary" onclick="predict()">Predict</button>
+            </div>
+            <p class="status" id="status">Draw a digit and click predict</p>
+        </div>
+
+        <div class="right">
+            <div class="prediction-box">
+                <div class="prediction-label">Prediction</div>
+                <div class="prediction-number" id="prediction">—</div>
+            </div>
+
+            <div class="confidence-section">
+                <div class="section-title">Confidence per digit</div>
+                <div id="bars"></div>
+            </div>
+
+            <div class="network-section">
+                <div class="section-title">Network activations</div>
+                <canvas id="network-canvas" width="400" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Drawing
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    canvas.addEventListener('mousedown', e => { drawing = true; ctx.beginPath(); ctx.moveTo(...pos(e)); });
+    canvas.addEventListener('mousemove', e => { if (!drawing) return; ctx.lineTo(...pos(e)); ctx.stroke(); ctx.beginPath(); ctx.moveTo(...pos(e)); });
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); ctx.moveTo(...pos(e.touches[0])); });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!drawing) return; ctx.lineTo(...pos(e.touches[0])); ctx.stroke(); ctx.beginPath(); ctx.moveTo(...pos(e.touches[0])); });
+    canvas.addEventListener('touchend', () => drawing = false);
+
+    function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        return [e.clientX - r.left, e.clientY - r.top];
+    }
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('prediction').textContent = '—';
+        document.getElementById('status').textContent = 'Draw a digit and click predict';
+        initBars();
+        clearNetworkCanvas();
+    }
+
+    // Bars
+    function initBars() {
+        const container = document.getElementById('bars');
+        container.innerHTML = '';
+        for (let i = 0; i <= 9; i++) {
+            container.innerHTML += `
+                <div class="bar-row">
+                    <span class="bar-label">${i}</span>
+                    <div class="bar-track"><div class="bar-fill" id="bar-${i}"></div></div>
+                    <span class="bar-pct" id="pct-${i}">0%</span>
+                </div>`;
+        }
+    }
+
+    function updateBars(confidences, prediction) {
+        for (let i = 0; i <= 9; i++) {
+            const pct = (confidences[i] * 100).toFixed(1);
+            const bar = document.getElementById(`bar-${i}`);
+            bar.style.width = pct + '%';
+            bar.classList.toggle('top', i === prediction);
+            document.getElementById(`pct-${i}`).textContent = pct + '%';
+        }
+    }
+
+    // Network
+    const netCanvas = document.getElementById('network-canvas');
+    const netCtx = netCanvas.getContext('2d');
+
+    function clearNetworkCanvas() {
+        netCtx.clearRect(0, 0, netCanvas.width, netCanvas.height);
+    }
+
+    function drawNetwork(activations) {
+        clearNetworkCanvas();
+        const layers = [
+            sample(activations[0], 20),
+            sample(activations[1], 20),
+            sample(activations[2], 20),
+            activations[3]
+        ];
+
+        const H = netCanvas.height;
+        const layerX = [40, 155, 260, 365];
+        const colors = ['#4a9eff', '#a78bfa', '#f472b6', '#4aff9e'];
+
+        layers.forEach((layer, li) => {
+            const n = layer.length;
+            const spacing = H / (n + 1);
+            layer.forEach((val, ni) => {
+                const x = layerX[li];
+                const y = spacing * (ni + 1);
+                const alpha = 0.15 + Math.min(Math.max(val, 0), 1) * 0.85;
+                netCtx.beginPath();
+                netCtx.arc(x, y, 5, 0, Math.PI * 2);
+                netCtx.globalAlpha = alpha;
+                netCtx.fillStyle = colors[li];
+                netCtx.fill();
+                netCtx.globalAlpha = 1;
+            });
+
+            const labels = ['Input\n784', 'Hidden\n128', 'Hidden\n64', 'Output\n10'];
+            netCtx.fillStyle = '#444';
+            netCtx.font = '9px Courier New';
+            netCtx.textAlign = 'center';
+            netCtx.fillText(labels[li].split('\n')[0], layerX[li], H - 16);
+            netCtx.fillText(labels[li].split('\n')[1], layerX[li], H - 6);
+        });
+    }
+
+    function sample(arr, n) {
+        if (arr.length <= n) return arr;
+        const step = Math.floor(arr.length / n);
+        return arr.filter((_, i) => i % step === 0).slice(0, n);
+    }
+
+    // Predict
+    async function predict() {
+        document.getElementById('status').textContent = 'Running...';
+        const imageData = canvas.toDataURL('image/png');
+
+        try {
+            const response = await fetch('http://localhost:5000/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            });
+
+            const result = await response.json();
+            document.getElementById('prediction').textContent = result.prediction;
+            document.getElementById('status').textContent = `Confidence: ${(result.confidences[result.prediction] * 100).toFixed(1)}%`;
+            updateBars(result.confidences, result.prediction);
+            drawNetwork(result.activations);
+
+        } catch (err) {
+            document.getElementById('status').textContent = 'Error: is the server running?';
+        }
+    }
+
+    // Init
+    initBars();
+</script>
+</body>
+</html>
